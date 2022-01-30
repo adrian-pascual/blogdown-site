@@ -1,5 +1,5 @@
 baseURL: http://www.example.com
-title: johndoe
+title: Home
 theme: hugo-coder
 languageCode: en
 defaultContentLanguage: en
@@ -9,7 +9,7 @@ pygmentsCodeFences: yes
 pygmentsCodeFencesGuessSyntax: yes
 enableEmoji: yes
 params:
-  author: John Doe
+  author: Adrian Pascual
   avatarURL: images/avatar.jpg
   colorScheme: auto
   commit: https://github.com/luizdepra/hugo-coder/tree/
@@ -17,42 +17,27 @@ params:
   customJS: []
   customSCSS: []
   dateFormat: January 2, 2006
-  description: John Doe's personal website
+  description: Adrian's personal website
   hideColorSchemeToggle: no
   info:
-    - Full Stack DevOps
-    - Magician
-  keywords: blog,developer,personal
+    - Data Analyst
+  keywords: blog,data analyst,personal
   maxSeeAlsoItems: 5
   rtl: no
   since: 2019
   social:
     - icon: fa fa-2x fa-github
       name: Github
-      url: https://github.com/johndoe/
+      url: https://github.com/adrian-pascual
       weight: 1
-    - icon: fa fa-2x fa-gitlab
-      name: Gitlab
-      url: https://gitlab.com/johndoe/
-      weight: 2
-    - icon: fa fa-2x fa-twitter
-      name: Twitter
-      url: https://twitter.com/johndoe/
-      weight: 3
     - icon: fa fa-2x fa-linkedin
       name: LinkedIn
-      url: https://www.linkedin.com/in/johndoe/
-      weight: 4
-    - icon: fa fa-2x fa-medium
-      name: Medium
-      url: https://medium.com/@johndoe
-      weight: 5
-    - icon: fa fa-2x fa-rss
-      name: RSS
-      rel: alternate
-      type: application/rss+xml
-      url: https://myhugosite.com/index.xml
-      weight: 6
+      url: https://www.linkedin.com/in/adrian-pascual/
+      weight: 2
+    - icon: fa fa-2x fa-bar-chart
+      name: Tableau
+      url: https://public.tableau.com/app/profile/apascual#!/
+      weight: 3
 taxonomies:
   author: authors
   category: categories
