@@ -54,3 +54,6 @@ languages:
         - name: Blog
           url: posts/
           weight: 2
+goldmark:
+  renderer:
+    unsafe: true

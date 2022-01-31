@@ -1,0 +1,272 @@
+---
+title: Skateboarding and Statistics
+author: R package build
+date: '2022-01-30'
+slug: []
+categories: []
+tags: []
+authors: []
+description: ''
+externalLink: ''
+series: []
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE)
+```
+Although it might be hard to believe, 2021 was a fantastic year for the skateboarding industry. While [manufacturing issues](https://www.jenkemmag.com/home/2021/01/07/look-skateboard-drought-2020/) plagued the market during the early days of the pandemic, demand for skate products has been [skyrocketing](https://capitolweekly.net/ca-skateboarders-and-covid-19-demand-up-equipment-down/). Skateboarding's [Olympic debut](https://www.cbsnews.com/news/momiji-nishiya-japan-olympics-skateboarding-gold-medal/) only added to the sport's mainstream appeal. 
+
+With competitive skateboarding reaching its apex, I contacted [The Boardr](https://theboardr.com/) (a company that hosts and organizes skateboarding's top events) to see what data could be available from recent contests and their participants. Luckily, The Boardr was quick to respond with a surprisingly detailed data set! Below I use the coding language R to take a look at cleaning, exploring, and visualizing data on 3,000+ skate events from 2017 to May of 2020. 
+
+## Cleaning the data 
+
+First I started by taking a quick look at the raw file to understand how the data was formatted. 
+
+```{r message=FALSE, include=FALSE}
+# Load packages and data --------------------------------------------------
+library(tidyverse)
+library(formattable)
+library(scales)
+library(jsonlite)
+library(lubridate)
+library(here)
+library(ggsci)
+
+# Load raw data in JSON 
+import <- fromJSON(here("data/raw_skate_contest.json"))
+```
+
+```{r}
+glimpse(import)
+```
+
+This data doesn't look so bad! First, I renamed the field names to be lower case and removed the fields "Profile Link" and "Mugshot". I standardized all the event titles to be proper case and removed their punctuation (a little easier to read). Some skaters were listed as being zero years old, I replaced their age with a "NULL" value. There were a couple folks with more that one "SkaterID", I picked one ID out of the two and removed the other row. 
+
+```{r, message=FALSE}
+# Clean and rename fields -------------------------------------------------
+raw <- import %>%  
+  select(contest = ContestName,
+         contest_id = ContestID,
+         date = ContestDate,
+         skater_id = SkaterID,
+         skater = Skater,
+         place = Place,
+         age = AgeAtDateOfContest,
+         current_age = CurrentAgeToday,
+         prize = PrizeMoney,
+         best_run = HighRunScore,
+         skater_country = SkaterCountry) %>%
+  mutate(contest = str_to_title(contest),
+         contest = str_remove_all(contest, '[[:punct:]]'),
+         prize = currency(prize, "$", digits = 0),
+         date = ymd_hms(date),
+         age = case_when(age == 0 ~ NA_integer_, T ~ age),
+         current_age = case_when(current_age == 0 ~ NA_integer_, T ~ current_age)) %>% 
+  # Remove skaters with multiple skater_ids 
+  group_by(skater) %>% 
+  mutate(unique_id = n_distinct(skater_id)) %>%
+  filter(unique_id == 1) %>% 
+  ungroup()
+```
+
+
+Let's take a look at the contest name format. 
+
+```{r echo=FALSE}
+# Preview contests
+head(sort(unique(raw$contest)),5)
+```
+
+Sex isn't included as a variable in the inital data set. I used REGEX to identify whether a contest was male or female by detecting strings like "Male", "Men's", "Women's", etc in the contest title. Then I created a separate variable labeled "sex" that contained either "F" or "M" depending on the type of event. 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# List of sex specific terms
+s <- c('(Male','Men','Man','Boy', 'Hombre',
+       'Female','Women','Woman','Girl','Ladies','Mujer','Femenino','Daughters)')
+
+# New binary field with sex
+df_sex <- raw %>%
+  # Rename two contests that were mis-catagorized by sex 
+  mutate(contest = str_replace_all(contest, "Jsg  Jerusalem Skater Girls", "Jsg Jerusalem Skater"),
+         contest = str_replace_all(contest, "King Of Street Mansfield Ladies", "Ladies King Of Street Mansfield")) %>% 
+  extract(contest, into = 'sex',
+          regex = regex(str_c(s, collapse = '|')),
+          remove = F) %>%
+  mutate(sex = str_replace_all(sex, '(Female|Women|Woman|Girl|Ladies|Mujer|Femenino|Daughters)', 'F'),
+         sex = str_replace_all(sex, '(Male|Men|Man|Boy|Hombre)', 'M')) 
+
+# Unique sex per skater
+sex_na <- df_sex %>% 
+  distinct(skater_id, sex) %>% 
+  drop_na() 
+
+# Replace NAs form unknown contests with values filled in earlier regex 
+df_final <- left_join(df_sex, sex_na, by = "skater_id", suffix = c("_a", "_b")) %>% 
+  mutate(sex_b = replace_na(sex_b, "M")) %>% 
+  rename(sex = sex_b) %>% 
+  select(-sex_a) %>% 
+  group_by(skater_id) %>% 
+  filter(n_distinct(sex) < 2)
+```
+
+The Bordr had also mentioned that the data includes BMX and skateboarding competitions. However, I'm only interested in the skating events. The BMX contests have the string "BMX" in their title, so I used REGEX to extract those events and place them in a separate data set. 
+
+```{r}
+# Data frame for BMX
+bmx <- df_final %>% 
+  filter(str_detect(contest, "(?i)bmx"))
+
+# Data frame for skateboarding
+skate <- df_final %>% 
+  filter(str_detect(contest, "(?i)^((?!bmx).)*$"))
+```
+
+### Gender Pay Gap Analysis
+
+After cleaning all the data, I was curious to know if men and women were compensated equally in competitive skating. Professional female skaters like Cara-Beth Burnside and Jen O’Brien have pushed for fair compensation in contests like the X Games [since at least 2005](https://www.nytimes.com/2006/07/26/sports/othersports/26skateboard.html). How much has changed in the past 15 years? First, I decide to take a quick look at the gender breakdown of all the skaters in the data set.
+
+```{r include=FALSE}
+# Age at first competition
+min_age <- skate %>%
+  group_by(skater_id, skater, sex, skater_country) %>% 
+  summarize(min_age = min(age)) %>%
+  ungroup() %>% 
+  distinct(skater, sex, min_age, skater_country)
+
+# Median age by sex 
+mu <- plyr::ddply(min_age, "sex", summarise, grp.median=median(min_age, na.rm = T))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Pie Chart of Total Skaters by Sex 
+ggplot(min_age, aes(x = "", fill = factor(sex))) + 
+  geom_bar(width = 1, alpha = 0.6, color = "black") +
+  coord_polar("y") +
+  theme_void() +
+  theme(axis.line = element_blank(), 
+        plot.title = element_text(size = 16,  hjust = 0.5, vjust = -1),
+        legend.position = c(0.85, 0.9), 
+        axis.text.x = element_blank(),
+        legend.text = element_text(size = 15),
+        legend.title = element_blank()) +
+  scale_fill_simpsons(labels=c("Female", "Male")) +
+  scale_color_simpsons() +
+  labs(fill="class", 
+       x = NULL, 
+       y = NULL,  
+       title="Skateboard Competition Participants") +
+annotate("text", x = 1.35, y = 14150,
+          label = "1,086 / 7%", color = "black", size = 3.5) +
+annotate("text", x = 1, y = 5000,
+           label = "13,625 / 93%", color = "black", size = 4) 
+```
+
+Wow, contest skating is overwhelmingly male! No surprises here to veteran skaters or folks who follow the bigger skate contests brodcast on ESPN. What about the age differences between men and women?
+
+```{r echo=FALSE, message=TRUE, warning=FALSE, paged.print=FALSE}
+# Density Distribution by Sex
+ggplot(min_age, aes(x = min_age, color = sex, fill = sex, na.rm = T)) +
+  geom_density(alpha = 0.6) +
+  theme_minimal() +
+  theme(legend.justification=c(2.5,1),
+        legend.position = c(1.1, 0.95),
+      strip.text.y = element_blank(),
+      legend.title=element_blank()) +
+  scale_fill_simpsons(labels = c("Female", "Male")) +
+  scale_color_simpsons(labels = c("Female", "Male")) +
+  geom_vline(data=mu, aes(xintercept = grp.median, color = sex),
+             linetype = "dashed") +
+  labs(title = 'Age at First Competition', y = 'Density of Skaters', x = 'Age') +
+  annotate("text", x = 11, y = 0.07,
+         label = "Median Age: 17 ->", color = "black", size = 3.5) +
+  annotate("text", x = 26, y = 0.06,
+           label = "<- Median Age: 19", color = "black", size = 3.5)
+```
+
+Interestingly, women on average start competing two years earlier than men. This is a good sign for the growing popularity and diversity of skateboarding as a whole. However, when I looked at the distribution by gender of the total prize money awarded in a year, there were some dissapointing results.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Annual Pay Gap btwn Male and Female Skaters
+skate %>%
+  group_by(year = year(date), sex) %>% 
+  summarize(total_prize_money= sum(prize, na.rm = T)) %>%
+  pivot_wider(names_from = sex, values_from = total_prize_money) %>%
+  mutate(`pay gap` = `M` - `F`) %>% 
+  arrange(desc(year))
+```
+
+In the earlier years of the data set, women were only earning 25% of the total prize money given to men. For 2020 in particular, I only had access to data from January to September. This lack of data coupled with the global COVID-19 pandemic made the prize money awarded in 2020 an unreliable representation of the gender pay gab as a whole. 
+
+To investigate this disparity, I decided to examine the highest earning male and female skateboarders according to their all time winnings. 
+
+```{r echo=FALSE}
+# Top Five Highest Earning Female Competitors
+skate %>% 
+  filter(sex == 'F') %>% 
+  group_by(skater) %>% 
+  summarize(total_prize_money= sum(prize, na.rm = T)) %>% 
+  arrange(desc(total_prize_money)) %>% 
+  head(5)
+```
+```{r echo=FALSE}
+# Top Five Highest Earning Male Competitors
+skate %>% 
+  filter(sex == 'M') %>% 
+  group_by(skater) %>% 
+  summarize(total_prize_money= sum(prize, na.rm = T)) %>% 
+  arrange(desc(total_prize_money)) %>% 
+  head(5)
+```
+
+The top earning male skateboarder in this data set, Nyjah Huston, made close to triple to total earnings of his female counterpart. Hopefully with the international attention from the 2020 Tokyo Olympics, skaters and sponsors alike will start to rethink the inequitable compensation the skate industry still promotes today. 
+
+### Skaters by Country 
+
+Finally, I wanted to take a closer look at Olympics skateboarding has grown as an international sensation. From humble roots in 1960s California USA to center stage at the Olympics, skateboarding has attracted millions of practitioners around the world. The vast majority of skateboard competitors in this data set is American, although there could be some sample bias since the contest organizers at the Boardr who provided this data are based in the states.
+
+```{r include=FALSE}
+# Countries with the Most Skaters 
+min_age %>% 
+  group_by(skater_country) %>% 
+  count(skater_country) %>% 
+  rename("total_skaters" = n) %>% 
+  arrange(desc(total_skaters)) %>% 
+  head(5) %>% 
+  ggplot() + 
+  geom_bar(aes(x = reorder(skater_country, -total_skaters),
+               total_skaters,  
+               fill = skater_country),
+           stat = 'identity') +
+  scale_fill_simpsons() +
+  labs(x = NULL, y = "Total Skaters",
+       title = "Countries with the Most Skateboarders") +
+  theme_minimal() +
+  theme(legend.position='none') +
+  scale_y_continuous(labels = comma_format())
+```
+
+While Brazil is fifth in terms total competitive skaters, Brazilians have earned more prize money than almost any other country. Moreover, Japan isn't even in the top five for the most competitive skaters, yet they they came in third in total earnings! 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Top 5 Highest Earning Countries
+skate %>% 
+  group_by(skater_country) %>% 
+  summarize(total_prize_money= sum(prize, na.rm = T)) %>% 
+  arrange(desc(total_prize_money)) %>% 
+  head(5) %>% 
+  ggplot() + 
+  geom_bar(aes(x = reorder(skater_country, -total_prize_money),
+               total_prize_money,  
+               fill = skater_country),
+           stat = 'identity') +
+  scale_fill_simpsons() +
+  labs(x = NULL, y = NULL,
+       title = "Total Prize Money by Country") +
+  theme_minimal() +
+  theme(legend.position='none') +
+  scale_y_continuous(labels = scales::dollar_format(scale = 0.000001, suffix = "m"))
+```
+
+### Final Thoughts
+
+Having skateboarded myself for the past 12 years, I was thrilled to be able to get my hands on some data about a activity that has given me so much pleasure in life. Digging through this data, it's apparent that skating is  primarily male and American dominated in contests. That being said, as younger women join the skate scene and other countries find success ([only two out of nine Olympic medalists were American in 2021](https://www.nytimes.com/2021/08/04/sports/olympics/japan-skateboarding-gold.html)), there should be some optimism for developing a more diverse competitive environment. This won't happen without pros and the public demanding equitable compensation for the women, as well as sponsors recognizing the importance of supporting underrepresented skaters. 
