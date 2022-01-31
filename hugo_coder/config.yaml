@@ -57,3 +57,6 @@ languages:
 goldmark:
   renderer:
     unsafe: true
+markup:
+  highlight:
+    style: dracula
