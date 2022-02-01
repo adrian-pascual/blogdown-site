@@ -170,8 +170,9 @@ ggplot(min_age, aes(x = min_age, color = gender, fill = gender, na.rm = T)) +
   theme_minimal() +
   theme(legend.justification=c(2.5,1),
         legend.position = c(1.1, 0.95),
-      strip.text.y = element_blank(),
-      legend.title=element_blank()) +
+        strip.text.y = element_blank(),
+        legend.title=element_blank()) +
+  scale_x_continuous(breaks=seq(5,60,5)) +
   scale_fill_simpsons(labels = c("Female", "Male")) +
   scale_color_simpsons(labels = c("Female", "Male")) +
   geom_vline(data=mu, aes(xintercept = grp.median, color = gender),
