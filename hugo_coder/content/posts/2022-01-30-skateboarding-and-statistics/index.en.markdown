@@ -14,7 +14,7 @@ series: []
 
 Although it might be hard to believe, 2021 was a fantastic year for the skateboarding industry. While [manufacturing issues](https://www.jenkemmag.com/home/2021/01/07/look-skateboard-drought-2020/) plagued the market during the early days of the pandemic, demand for skate products has been [skyrocketing](https://capitolweekly.net/ca-skateboarders-and-covid-19-demand-up-equipment-down/). Skateboarding's [Olympic debut](https://www.cbsnews.com/news/momiji-nishiya-japan-olympics-skateboarding-gold-medal/) only added to the sport's mainstream appeal. 
 
-With competitive skateboarding reaching its apex, I contacted [The Boardr](https://theboardr.com/) (a company that hosts and organizes skateboarding's top events) to see what data could be available from recent contests and their participants. Luckily, The Boardr was quick to respond with a surprisingly detailed data set! Below I use the coding language R to take a look at cleaning, exploring, and visualizing data on 3,000+ skate events from 2017 to May of 2020. 
+With competitive skateboarding reaching its apex, I contacted [The Boardr](https://theboardr.com/) (a company that organizes and scores skateboarding's top events) to see what data could be available from recent contests and their participants. Luckily, The Boardr was quick to respond with a surprisingly detailed data set! Below I use the coding language R to take a look at cleaning, exploring, and visualizing data on 3,000+ skate events from 2017 to May of 2020. 
 
 ## Cleaning the data 
 
@@ -84,7 +84,7 @@ Let's take a look at the contest name format.
 ## [5] "2017 Daughters Of Doom  Open"
 ```
 
-gender isn't included as a variable in the inital data set. I used REGEX to identify whether a contest was male or female by detecting strings like "Male", "Men's", "Women's", etc in the contest title. Then I created a separate variable labeled "gender" that contained either "F" or "M" depending on the type of event. 
+Gender isn't included as a variable in the initial data set. I used REGEX to identify whether a contest was male or female by detecting strings like "Woman", "Man, "Male", etc in the contest title. Then I created a separate variable labeled "gender" that contained either "F" or "M" depending on the type of event. 
 
 
 ```r
@@ -94,7 +94,7 @@ s <- c('(Male','Men','Man','Boy', 'Hombre',
 
 # New field with gender
 df_gender <- raw %>%
-  # Rename two contests that were mis-catagorized by gender 
+  # Rename two contests that were mis-categorized by gender 
   mutate(contest = str_replace_all(contest, "Jsg  Jerusalem Skater Girls", "Jsg Jerusalem Skater"),
          contest = str_replace_all(contest, "King Of Street Mansfield Ladies", "Ladies King Of Street Mansfield")) %>% 
   extract(contest, into = 'gender',
@@ -117,7 +117,7 @@ df_final <- left_join(df_gender, gender_na, by = "skater_id", suffix = c("_a", "
   filter(n_distinct(gender) < 2)
 ```
 
-The Bordr had also mentioned that the data includes BMX and skateboarding competitions. However, I'm only interested in the skating events. The BMX contests have the string "BMX" in their title, so I used REGEX to extract those events and place them in a separate data set. 
+The Boardr had also mentioned that the data includes BMX and skateboarding competitions. However, I'm only interested in the skating events. The BMX contests have the string "BMX" in their title, so I used REGEX to extract those events and place them in a separate data set. 
 
 
 ```r
@@ -138,11 +138,11 @@ After cleaning all the data, I was curious to know if men and women were compens
 
 <img src="{{< blogdown/postref >}}index.en_files/figure-html/unnamed-chunk-8-1.png" width="672" />
 
-Wow, contest skating is overwhelmingly male! No surprises here to veteran skaters or folks who follow the bigger skate contests broadcast on ESPN. What about the age differences between men and women?
+Wow, contest skating is overwhelmingly male! No surprises here to veteran skaters or folks who follow the skate contests broadcast on television or the internet. What about the age differences between men and women?
 
 <img src="{{< blogdown/postref >}}index.en_files/figure-html/unnamed-chunk-9-1.png" width="672" />
 
-Interestingly, women on average start competing two years earlier than men. This is a good sign for the growing popularity and diversity of skateboarding as a whole. However, when I looked at the distribution by gender of the total prize money awarded in a year, there were some dissapointing results.
+Interestingly, women on average start competing two years earlier than men. This is a good sign for the growing popularity and diversity of skateboarding as a whole. However, when I looked at the distribution by gender of the total prize money awarded in a year, there were some disappointing results.
 
 
 ```
@@ -184,11 +184,11 @@ To investigate this disparity, I decided to examine the highest earning male and
 ## 5 Kelvin Hoefler $235,750
 ```
 
-The top earning male skateboarder in this data set, Nyjah Huston, made close to triple to total earnings of his female counterpart. Hopefully with the international attention from the 2020 Tokyo Olympics, skaters and sponsors alike will start to rethink the inequitable compensation the skate industry still promotes today. 
+The top earning male skateboarder in this data set, Nyjah Huston, made close to triple to total earnings of his female counterpart. 
 
 ### Skaters by Country 
 
-Finally, I wanted to take a closer look at Olympics skateboarding has grown as an international sensation. From humble roots in 1960s California USA to center stage at the Olympics, skateboarding has attracted millions of practitioners around the world. The vast majority of skateboard competitors in this data set is American, although there could be some sample bias since the contest organizers at the Boardr who provided this data are based in the states.
+From humble roots in 1960s California USA to center stage at the Olympics, skateboarding has attracted millions of practitioners around the world. The vast majority of skateboard competitors in this data set is American, although there could be some sample bias since the contest organizers at the Boardr who provided this data are based in the states.
 
 <img src="{{< blogdown/postref >}}index.en_files/figure-html/unnamed-chunk-13-1.png" width="672" />
 
