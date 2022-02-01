@@ -1,4 +1,4 @@
-baseURL: http://www.adrianp.netlify.app
+baseURL: https://adrianp.netlify.app
 title: Home
 theme: hugo-coder
 languageCode: en
