@@ -146,7 +146,6 @@ Interestingly, women on average start competing two years earlier than men. This
 
 
 ```
-## `summarise()` has grouped output by 'year'. You can override using the `.groups` argument.
 ## # A tibble: 4 × 4
 ## # Groups:   year [4]
 ##    year F          M          `pay gap` 

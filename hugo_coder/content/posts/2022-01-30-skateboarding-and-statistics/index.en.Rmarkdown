@@ -186,7 +186,7 @@ ggplot(min_age, aes(x = min_age, color = gender, fill = gender, na.rm = T)) +
 
 Interestingly, women on average start competing two years earlier than men. This is a good sign for the growing popularity and diversity of skateboarding as a whole. However, when I looked at the distribution by gender of the total prize money awarded in a year, there were some disappointing results.
 
-```{r echo=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Annual Pay Gap btwn Male and Female Skaters
 skate %>%
   group_by(year = year(date), gender) %>% 
