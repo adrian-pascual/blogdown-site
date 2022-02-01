@@ -1,4 +1,4 @@
-baseURL: http://www.example.com
+baseURL: http://www.adrianp.netlify.app
 title: Home
 theme: hugo-coder
 languageCode: en
