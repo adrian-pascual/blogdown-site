@@ -77,36 +77,36 @@ Let's take a look at the contest name format.
 head(sort(unique(raw$contest)),5)
 ```
 
-Sex isn't included as a variable in the inital data set. I used REGEX to identify whether a contest was male or female by detecting strings like "Male", "Men's", "Women's", etc in the contest title. Then I created a separate variable labeled "sex" that contained either "F" or "M" depending on the type of event. 
+gender isn't included as a variable in the inital data set. I used REGEX to identify whether a contest was male or female by detecting strings like "Male", "Men's", "Women's", etc in the contest title. Then I created a separate variable labeled "gender" that contained either "F" or "M" depending on the type of event. 
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
-# List of sex specific terms
+# List of gender specific terms
 s <- c('(Male','Men','Man','Boy', 'Hombre',
        'Female','Women','Woman','Girl','Ladies','Mujer','Femenino','Daughters)')
 
-# New binary field with sex
-df_sex <- raw %>%
-  # Rename two contests that were mis-catagorized by sex 
+# New field with gender
+df_gender <- raw %>%
+  # Rename two contests that were mis-catagorized by gender 
   mutate(contest = str_replace_all(contest, "Jsg  Jerusalem Skater Girls", "Jsg Jerusalem Skater"),
          contest = str_replace_all(contest, "King Of Street Mansfield Ladies", "Ladies King Of Street Mansfield")) %>% 
-  extract(contest, into = 'sex',
+  extract(contest, into = 'gender',
           regex = regex(str_c(s, collapse = '|')),
           remove = F) %>%
-  mutate(sex = str_replace_all(sex, '(Female|Women|Woman|Girl|Ladies|Mujer|Femenino|Daughters)', 'F'),
-         sex = str_replace_all(sex, '(Male|Men|Man|Boy|Hombre)', 'M')) 
+  mutate(gender = str_replace_all(gender, '(Female|Women|Woman|Girl|Ladies|Mujer|Femenino|Daughters)', 'F'),
+         gender = str_replace_all(gender, '(Male|Men|Man|Boy|Hombre)', 'M')) 
 
-# Unique sex per skater
-sex_na <- df_sex %>% 
-  distinct(skater_id, sex) %>% 
+# Unique gender per skater
+gender_na <- df_gender %>% 
+  distinct(skater_id, gender) %>% 
   drop_na() 
 
 # Replace NAs form unknown contests with values filled in earlier regex 
-df_final <- left_join(df_sex, sex_na, by = "skater_id", suffix = c("_a", "_b")) %>% 
-  mutate(sex_b = replace_na(sex_b, "M")) %>% 
-  rename(sex = sex_b) %>% 
-  select(-sex_a) %>% 
+df_final <- left_join(df_gender, gender_na, by = "skater_id", suffix = c("_a", "_b")) %>% 
+  mutate(gender_b = replace_na(gender_b, "M")) %>% 
+  rename(gender = gender_b) %>% 
+  select(-gender_a) %>% 
   group_by(skater_id) %>% 
-  filter(n_distinct(sex) < 2)
+  filter(n_distinct(gender) < 2)
 ```
 
 The Bordr had also mentioned that the data includes BMX and skateboarding competitions. However, I'm only interested in the skating events. The BMX contests have the string "BMX" in their title, so I used REGEX to extract those events and place them in a separate data set. 
@@ -128,18 +128,18 @@ After cleaning all the data, I was curious to know if men and women were compens
 ```{r include=FALSE}
 # Age at first competition
 min_age <- skate %>%
-  group_by(skater_id, skater, sex, skater_country) %>% 
+  group_by(skater_id, skater, gender, skater_country) %>% 
   summarize(min_age = min(age)) %>%
   ungroup() %>% 
-  distinct(skater, sex, min_age, skater_country)
+  distinct(skater, gender, min_age, skater_country)
 
-# Median age by sex 
-mu <- plyr::ddply(min_age, "sex", summarise, grp.median=median(min_age, na.rm = T))
+# Median age by gender 
+mu <- plyr::ddply(min_age, "gender", summarise, grp.median=median(min_age, na.rm = T))
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-# Pie Chart of Total Skaters by Sex 
-ggplot(min_age, aes(x = "", fill = factor(sex))) + 
+# Pie Chart of Total Skaters by gender 
+ggplot(min_age, aes(x = "", fill = factor(gender))) + 
   geom_bar(width = 1, alpha = 0.6, color = "black") +
   coord_polar("y") +
   theme_void() +
@@ -161,11 +161,11 @@ annotate("text", x = 1, y = 5000,
            label = "13,625 / 93%", color = "black", size = 4) 
 ```
 
-Wow, contest skating is overwhelmingly male! No surprises here to veteran skaters or folks who follow the bigger skate contests brodcast on ESPN. What about the age differences between men and women?
+Wow, contest skating is overwhelmingly male! No surprises here to veteran skaters or folks who follow the bigger skate contests broadcast on ESPN. What about the age differences between men and women?
 
-```{r echo=FALSE, message=TRUE, warning=FALSE, paged.print=FALSE}
-# Density Distribution by Sex
-ggplot(min_age, aes(x = min_age, color = sex, fill = sex, na.rm = T)) +
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Density Distribution by gender
+ggplot(min_age, aes(x = min_age, color = gender, fill = gender, na.rm = T)) +
   geom_density(alpha = 0.6) +
   theme_minimal() +
   theme(legend.justification=c(2.5,1),
@@ -174,7 +174,7 @@ ggplot(min_age, aes(x = min_age, color = sex, fill = sex, na.rm = T)) +
       legend.title=element_blank()) +
   scale_fill_simpsons(labels = c("Female", "Male")) +
   scale_color_simpsons(labels = c("Female", "Male")) +
-  geom_vline(data=mu, aes(xintercept = grp.median, color = sex),
+  geom_vline(data=mu, aes(xintercept = grp.median, color = gender),
              linetype = "dashed") +
   labs(title = 'Age at First Competition', y = 'Density of Skaters', x = 'Age') +
   annotate("text", x = 11, y = 0.07,
@@ -185,12 +185,12 @@ ggplot(min_age, aes(x = min_age, color = sex, fill = sex, na.rm = T)) +
 
 Interestingly, women on average start competing two years earlier than men. This is a good sign for the growing popularity and diversity of skateboarding as a whole. However, when I looked at the distribution by gender of the total prize money awarded in a year, there were some dissapointing results.
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r echo=FALSE}
 # Annual Pay Gap btwn Male and Female Skaters
 skate %>%
-  group_by(year = year(date), sex) %>% 
+  group_by(year = year(date), gender) %>% 
   summarize(total_prize_money= sum(prize, na.rm = T)) %>%
-  pivot_wider(names_from = sex, values_from = total_prize_money) %>%
+  pivot_wider(names_from = gender, values_from = total_prize_money) %>%
   mutate(`pay gap` = `M` - `F`) %>% 
   arrange(desc(year))
 ```
@@ -202,7 +202,7 @@ To investigate this disparity, I decided to examine the highest earning male and
 ```{r echo=FALSE}
 # Top Five Highest Earning Female Competitors
 skate %>% 
-  filter(sex == 'F') %>% 
+  filter(gender == 'F') %>% 
   group_by(skater) %>% 
   summarize(total_prize_money= sum(prize, na.rm = T)) %>% 
   arrange(desc(total_prize_money)) %>% 
@@ -211,7 +211,7 @@ skate %>%
 ```{r echo=FALSE}
 # Top Five Highest Earning Male Competitors
 skate %>% 
-  filter(sex == 'M') %>% 
+  filter(gender == 'M') %>% 
   group_by(skater) %>% 
   summarize(total_prize_money= sum(prize, na.rm = T)) %>% 
   arrange(desc(total_prize_money)) %>% 
@@ -224,7 +224,7 @@ The top earning male skateboarder in this data set, Nyjah Huston, made close to 
 
 Finally, I wanted to take a closer look at Olympics skateboarding has grown as an international sensation. From humble roots in 1960s California USA to center stage at the Olympics, skateboarding has attracted millions of practitioners around the world. The vast majority of skateboard competitors in this data set is American, although there could be some sample bias since the contest organizers at the Boardr who provided this data are based in the states.
 
-```{r include=FALSE}
+```{r echo=FALSE}
 # Countries with the Most Skaters 
 min_age %>% 
   group_by(skater_country) %>% 
@@ -247,7 +247,7 @@ min_age %>%
 
 While Brazil is fifth in terms total competitive skaters, Brazilians have earned more prize money than almost any other country. Moreover, Japan isn't even in the top five for the most competitive skaters, yet they they came in third in total earnings! 
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r echo=FALSE}
 # Top 5 Highest Earning Countries
 skate %>% 
   group_by(skater_country) %>% 

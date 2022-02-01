@@ -84,37 +84,37 @@ Let's take a look at the contest name format.
 ## [5] "2017 Daughters Of Doom  Open"
 ```
 
-Sex isn't included as a variable in the inital data set. I used REGEX to identify whether a contest was male or female by detecting strings like "Male", "Men's", "Women's", etc in the contest title. Then I created a separate variable labeled "sex" that contained either "F" or "M" depending on the type of event. 
+gender isn't included as a variable in the inital data set. I used REGEX to identify whether a contest was male or female by detecting strings like "Male", "Men's", "Women's", etc in the contest title. Then I created a separate variable labeled "gender" that contained either "F" or "M" depending on the type of event. 
 
 
 ```r
-# List of sex specific terms
+# List of gender specific terms
 s <- c('(Male','Men','Man','Boy', 'Hombre',
        'Female','Women','Woman','Girl','Ladies','Mujer','Femenino','Daughters)')
 
-# New binary field with sex
-df_sex <- raw %>%
-  # Rename two contests that were mis-catagorized by sex 
+# New field with gender
+df_gender <- raw %>%
+  # Rename two contests that were mis-catagorized by gender 
   mutate(contest = str_replace_all(contest, "Jsg  Jerusalem Skater Girls", "Jsg Jerusalem Skater"),
          contest = str_replace_all(contest, "King Of Street Mansfield Ladies", "Ladies King Of Street Mansfield")) %>% 
-  extract(contest, into = 'sex',
+  extract(contest, into = 'gender',
           regex = regex(str_c(s, collapse = '|')),
           remove = F) %>%
-  mutate(sex = str_replace_all(sex, '(Female|Women|Woman|Girl|Ladies|Mujer|Femenino|Daughters)', 'F'),
-         sex = str_replace_all(sex, '(Male|Men|Man|Boy|Hombre)', 'M')) 
+  mutate(gender = str_replace_all(gender, '(Female|Women|Woman|Girl|Ladies|Mujer|Femenino|Daughters)', 'F'),
+         gender = str_replace_all(gender, '(Male|Men|Man|Boy|Hombre)', 'M')) 
 
-# Unique sex per skater
-sex_na <- df_sex %>% 
-  distinct(skater_id, sex) %>% 
+# Unique gender per skater
+gender_na <- df_gender %>% 
+  distinct(skater_id, gender) %>% 
   drop_na() 
 
 # Replace NAs form unknown contests with values filled in earlier regex 
-df_final <- left_join(df_sex, sex_na, by = "skater_id", suffix = c("_a", "_b")) %>% 
-  mutate(sex_b = replace_na(sex_b, "M")) %>% 
-  rename(sex = sex_b) %>% 
-  select(-sex_a) %>% 
+df_final <- left_join(df_gender, gender_na, by = "skater_id", suffix = c("_a", "_b")) %>% 
+  mutate(gender_b = replace_na(gender_b, "M")) %>% 
+  rename(gender = gender_b) %>% 
+  select(-gender_a) %>% 
   group_by(skater_id) %>% 
-  filter(n_distinct(sex) < 2)
+  filter(n_distinct(gender) < 2)
 ```
 
 The Bordr had also mentioned that the data includes BMX and skateboarding competitions. However, I'm only interested in the skating events. The BMX contests have the string "BMX" in their title, so I used REGEX to extract those events and place them in a separate data set. 
@@ -138,7 +138,7 @@ After cleaning all the data, I was curious to know if men and women were compens
 
 <img src="{{< blogdown/postref >}}index.en_files/figure-html/unnamed-chunk-8-1.png" width="672" />
 
-Wow, contest skating is overwhelmingly male! No surprises here to veteran skaters or folks who follow the bigger skate contests brodcast on ESPN. What about the age differences between men and women?
+Wow, contest skating is overwhelmingly male! No surprises here to veteran skaters or folks who follow the bigger skate contests broadcast on ESPN. What about the age differences between men and women?
 
 <img src="{{< blogdown/postref >}}index.en_files/figure-html/unnamed-chunk-9-1.png" width="672" />
 
@@ -146,6 +146,7 @@ Interestingly, women on average start competing two years earlier than men. This
 
 
 ```
+## `summarise()` has grouped output by 'year'. You can override using the `.groups` argument.
 ## # A tibble: 4 × 4
 ## # Groups:   year [4]
 ##    year F          M          `pay gap` 
@@ -189,7 +190,7 @@ The top earning male skateboarder in this data set, Nyjah Huston, made close to 
 
 Finally, I wanted to take a closer look at Olympics skateboarding has grown as an international sensation. From humble roots in 1960s California USA to center stage at the Olympics, skateboarding has attracted millions of practitioners around the world. The vast majority of skateboard competitors in this data set is American, although there could be some sample bias since the contest organizers at the Boardr who provided this data are based in the states.
 
-
+<img src="{{< blogdown/postref >}}index.en_files/figure-html/unnamed-chunk-13-1.png" width="672" />
 
 While Brazil is fifth in terms total competitive skaters, Brazilians have earned more prize money than almost any other country. Moreover, Japan isn't even in the top five for the most competitive skaters, yet they they came in third in total earnings! 
 
